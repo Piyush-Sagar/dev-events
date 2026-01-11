@@ -46,3 +46,15 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ message: 'Event Creation Failed', error: e instanceof Error ? e.message : 'Unknown' }, { status: 500 })
     }
 }
+
+export async function GET() {
+    try{
+        await connectDB();
+
+        const events = await Event.find().sort({ createdAt: -1 });
+
+        return NextResponse.json({message:'Events fetched successfully',events},{status:200});
+    } catch(e) {
+        return NextResponse.json({message:'Event fetching failed',error:e},{status:500});
+    }
+}
