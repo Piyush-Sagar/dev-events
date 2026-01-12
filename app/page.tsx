@@ -1,10 +1,12 @@
 import EventCard from "@/components/EventCard"
 import ExploreBtn from "@/components/ExploreBtn"
-import { events } from "@/lib/constants"
-import { title } from "process"
+import { IEvent } from "@/database";
+const BASE_URL=process.env.NEXT_PUBLIC_BASE_URL;
 
 
-const home = () => {
+const home = async () => {
+  const response=await fetch(`${BASE_URL}/api/events`)
+  const {events}=await response.json();
   return (
     <div>
       <section>
@@ -15,7 +17,7 @@ const home = () => {
         <div className="mt-20 space-y-7">
           <h3>Featured Events</h3>
           <ol className="events">
-            {events.map((event)=>(
+            {events.map((event:IEvent)=>(
               <li key={event.title}>
                 <EventCard {...event} />
               </li>
