@@ -58,7 +58,25 @@ export async function GET() {
         const events = await Event.find().sort({ createdAt: -1 });
 
         return NextResponse.json({ message: 'Events fetched successfully', events }, { status: 200 });
-    } catch (e) {
-        return NextResponse.json({ message: 'Event fetching failed', error: e }, { status: 500 });
+    } catch (error) {
+        console.error('Error fetching events:', error);
+
+        // Handle specific database connection errors
+        if (error instanceof Error) {
+          if (error.message.includes('Unable to connect to MongoDB') || error.message.includes('ECONNREFUSED') || error.message.includes('querySrv')) {
+            return NextResponse.json(
+              { message: 'Database connection failed. Please check your MongoDB Atlas connection.', error: error.message },
+              { status: 503 }
+            );
+          }
+          if (error.message.includes('authentication failed') || error.message.includes('auth failed')) {
+            return NextResponse.json(
+              { message: 'Database authentication failed. Please check your credentials.', error: error.message },
+              { status: 503 }
+            );
+          }
+        }
+
+        return NextResponse.json({ message: 'Event fetching failed', error: error instanceof Error ? error.message : 'Unknown error' }, { status: 500 });
     }
 }

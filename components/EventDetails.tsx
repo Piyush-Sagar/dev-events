@@ -1,4 +1,3 @@
-import React from 'react'
 import {notFound} from "next/navigation";
 import {IEvent} from "@/database";
 import {getSimilarEventsBySlug} from "@/lib/actions/event.actions";
@@ -8,6 +7,23 @@ import EventCard from "@/components/EventCard";
 import {cacheLife} from "next/cache";
 
 const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL;
+
+// Helper function to get local event image based on slug
+function getLocalEventImage(slug: string): string {
+  const imageMap: Record<string, string> = {
+    'devcon-2024': '/images/event1.png',
+    'react-summit-2024': '/images/event2.png',
+    'vue-conf-2024': '/images/event3.png',
+    'node-congress-2024': '/images/event4.png',
+    'typescript-summit-2024': '/images/event5.png',
+    'nextjs-conf-2024': '/images/event6.png',
+    'graphql-summit-2024': '/images/event7.png',
+    'rust-conf-2024': '/images/event8.png',
+    'go-conference-2024': '/images/event9.png',
+    'python-summit-2024': '/images/event10.png',
+  };
+  return imageMap[slug] || '/images/event-full.png';
+}
 
 const EventDetailItem = ({ icon, alt, label }: { icon: string; alt: string; label: string; }) => (
     <div className="flex-row-gap-2 items-center">
@@ -50,7 +66,8 @@ const EventDetails = async ({ params }: { params: Promise<string> }) => {
             if (request.status === 404) {
                 return notFound();
             }
-            throw new Error(`Failed to fetch event: ${request.statusText}`);
+            console.error('Failed to fetch event:', request.status, request.statusText);
+            return notFound();
         }
 
         const response = await request.json();
@@ -70,7 +87,10 @@ const EventDetails = async ({ params }: { params: Promise<string> }) => {
 
     const bookings = 10;
 
-    const similarEvents: IEvent[] = await getSimilarEventsBySlug(slug);
+    const similarEvents: IEvent[] = event ? await getSimilarEventsBySlug(slug) : [];
+
+    // Use local image if available, otherwise fall back to the database image
+    const eventImage = image || getLocalEventImage(slug);
 
     return (
         <section id="event">
@@ -82,7 +102,7 @@ const EventDetails = async ({ params }: { params: Promise<string> }) => {
             <div className="details">
                 {/*    Left Side - Event Content */}
                 <div className="content">
-                    <Image src={image} alt="Event Banner" width={800} height={800} className="banner" />
+                    <Image src={eventImage} alt="Event Banner" width={800} height={800} className="banner" />
 
                     <section className="flex-col-gap-2">
                         <h2>Overview</h2>
@@ -130,7 +150,7 @@ const EventDetails = async ({ params }: { params: Promise<string> }) => {
                 <h2>Similar Events</h2>
                 <div className="events">
                     {similarEvents.length > 0 && similarEvents.map((similarEvent: IEvent) => (
-                        <EventCard key={similarEvent.title} {...similarEvent} />
+                        <EventCard key={similarEvent.title || similarEvent.slug} {...similarEvent} />
                     ))}
                 </div>
             </div>

@@ -1,92 +1,247 @@
-export const events = [
+import { IEvent } from "@/database";
+
+export const fallbackEvents: IEvent[] = [
   {
     title: "React Conf 2026",
+    slug: "react-conf-2026",
+    description: "Join the world's leading React developers for two days of learning, networking, and inspiration. React Conf 2026 brings together the brightest minds in the React ecosystem to share insights on the latest features, best practices, and future direction of React.",
+    overview: "The official React conference featuring talks from the React core team and community leaders.",
     image: "/images/event1.png",
-    date: "May 15-16, 2026",
-    time: "9:00 AM - 5:00 PM",
+    venue: "Moscone Center",
     location: "San Francisco, CA",
-    type: "Conference",
-    slug: "react-conf-2026"
+    date: "2026-05-15",
+    time: "09:00",
+    mode: "offline",
+    audience: "React developers of all levels",
+    agenda: [
+      "Opening Keynote: The State of React 19",
+      "React Server Components Deep Dive",
+      "Building Accessible Components with React Aria",
+      "Performance Optimization with React Compiler",
+      "Panel: The Future of React"
+    ],
+    organizer: "Meta React Team",
+    tags: ["React", "Frontend", "JavaScript", "Conference"],
+    createdAt: new Date("2025-12-01"),
+    updatedAt: new Date("2025-12-01")
   },
   {
     title: "Node.js Interactive",
+    slug: "nodejs-interactive-2026",
+    description: "The premier conference for Node.js developers. Join core contributors and industry experts for deep dives into Node.js internals, performance optimization, and the future of server-side JavaScript.",
+    overview: "Hands-on workshops and technical sessions covering Node.js core, ecosystem tools, and production best practices.",
     image: "/images/event2.png",
-    date: "June 8-10, 2026",
-    time: "10:00 AM - 6:00 PM",
+    venue: "Austin Convention Center",
     location: "Austin, TX",
-    type: "Conference",
-    slug: "nodejs-interactive-2026"
+    date: "2026-06-08",
+    time: "10:00",
+    mode: "hybrid",
+    audience: "Backend developers and Node.js engineers",
+    agenda: [
+      "Node.js 24: New Features and Performance",
+      "Building High-Performance Microservices",
+      "Debugging Node.js in Production",
+      "Workshop: Native Addons with N-API",
+      "OpenJS Foundation Updates"
+    ],
+    organizer: "OpenJS Foundation",
+    tags: ["Node.js", "Backend", "JavaScript", "Conference"],
+    createdAt: new Date("2025-12-15"),
+    updatedAt: new Date("2025-12-15")
   },
   {
     title: "AI Hackathon Weekend",
+    slug: "ai-hackathon-weekend-2026",
+    description: "A 48-hour hackathon focused on building innovative AI-powered applications. Work with cutting-edge LLMs, computer vision models, and AI agent frameworks. Prizes for best projects in multiple categories.",
+    overview: "Build the future of AI in a weekend. Open to developers, designers, and product thinkers.",
     image: "/images/event3.png",
-    date: "March 22-24, 2026",
-    time: "12:00 PM - 11:59 PM",
+    venue: "Javits Center",
     location: "New York, NY",
-    type: "Hackathon",
-    slug: "ai-hackathon-weekend-2026"
+    date: "2026-03-22",
+    time: "12:00",
+    mode: "offline",
+    audience: "Developers, ML engineers, designers, product managers",
+    agenda: [
+      "Kickoff & Team Formation",
+      "Workshop: Building with OpenAI API",
+      "Workshop: LangChain & Agent Development",
+      "Hacking Session 1",
+      "Mentor Office Hours",
+      "Hacking Session 2",
+      "Project Presentations & Judging"
+    ],
+    organizer: "AI Developer Community",
+    tags: ["AI", "Hackathon", "Machine Learning", "LLM"],
+    createdAt: new Date("2026-01-10"),
+    updatedAt: new Date("2026-01-10")
   },
   {
     title: "Cloud Native DevCon",
+    slug: "cloud-native-devcon-2026",
+    description: "The leading conference for cloud-native technologies. Explore Kubernetes, service mesh, observability, and platform engineering with practitioners from top tech companies.",
+    overview: "Deep technical sessions on Kubernetes, service mesh, GitOps, and cloud-native architecture.",
     image: "/images/event4.png",
-    date: "April 12-14, 2026",
-    time: "9:00 AM - 5:00 PM",
+    venue: "Washington State Convention Center",
     location: "Seattle, WA",
-    type: "Conference",
-    slug: "cloud-native-devcon-2026"
+    date: "2026-04-12",
+    time: "09:00",
+    mode: "hybrid",
+    audience: "DevOps engineers, platform engineers, SREs",
+    agenda: [
+      "Kubernetes 1.30: What's New",
+      "Service Mesh Comparison: Istio vs Linkerd vs Cilium",
+      "GitOps at Scale with ArgoCD",
+      "Observability: Metrics, Logs, and Traces",
+      "Platform Engineering Panel"
+    ],
+    organizer: "CNCF",
+    tags: ["Kubernetes", "Cloud Native", "DevOps", "Platform Engineering"],
+    createdAt: new Date("2025-11-20"),
+    updatedAt: new Date("2025-11-20")
   },
   {
     title: "Web3 Summit",
+    slug: "web3-summit-2026",
+    description: "Explore the future of decentralized technology. Featuring talks on blockchain scaling, DeFi protocols, NFT standards, and Web3 developer tools.",
+    overview: "Two days of technical deep-dives into Web3 infrastructure, protocols, and applications.",
     image: "/images/event5.png",
-    date: "July 20-22, 2026",
-    time: "10:00 AM - 6:00 PM",
+    venue: "Miami Beach Convention Center",
     location: "Miami, FL",
-    type: "Conference",
-    slug: "web3-summit-2026"
+    date: "2026-07-20",
+    time: "10:00",
+    mode: "offline",
+    audience: "Blockchain developers, smart contract engineers, Web3 founders",
+    agenda: [
+      "Ethereum Layer 2 Scaling Solutions",
+      "Building Secure Smart Contracts",
+      "Account Abstraction (ERC-4337) Workshop",
+      "DeFi Protocol Architecture",
+      "Web3 UX: Bridging the Gap"
+    ],
+    organizer: "Ethereum Foundation",
+    tags: ["Web3", "Blockchain", "Ethereum", "Smart Contracts"],
+    createdAt: new Date("2026-02-01"),
+    updatedAt: new Date("2026-02-01")
   },
   {
     title: "Local Dev Meetup",
+    slug: "local-dev-meetup-2026",
+    description: "Monthly community meetup for developers of all levels. Lightning talks, networking, and discussion on the latest tools and trends.",
+    overview: "Casual monthly meetup with lightning talks and networking for local developers.",
     image: "/images/event6.png",
-    date: "February 28, 2026",
-    time: "7:00 PM - 9:00 PM",
+    venue: "Virtual (Zoom)",
     location: "Virtual",
-    type: "Meetup",
-    slug: "local-dev-meetup-2026"
+    date: "2026-02-28",
+    time: "19:00",
+    mode: "online",
+    audience: "All developers and experience levels welcome",
+    agenda: [
+      "Welcome & Community Updates",
+      "Lightning Talk: New Features in TypeScript 5.7",
+      "Lightning Talk: Building CLI Tools with Bun",
+      "Open Discussion & Networking"
+    ],
+    organizer: "Local Dev Community",
+    tags: ["Meetup", "Community", "Networking", "TypeScript"],
+    createdAt: new Date("2026-01-01"),
+    updatedAt: new Date("2026-01-01")
   },
   {
     title: "GraphQL Galaxy",
+    slug: "graphql-galaxy-2026",
+    description: "The ultimate GraphQL conference. Learn from the creators and maintainers of Apollo, GraphQL Yoga, and other leading GraphQL tools.",
+    overview: "Three days of GraphQL best practices, schema design, federation, and performance optimization.",
     image: "/images/event7.png",
-    date: "September 5-7, 2026",
-    time: "9:00 AM - 5:00 PM",
+    venue: "CityCube Berlin",
     location: "Berlin, Germany",
-    type: "Conference",
-    slug: "graphql-galaxy-2026"
+    date: "2026-09-05",
+    time: "09:00",
+    mode: "hybrid",
+    audience: "Backend developers, API architects, GraphQL enthusiasts",
+    agenda: [
+      "GraphQL Federation at Scale",
+      "Type-Safe GraphQL with TypeScript",
+      "Real-time GraphQL with Subscriptions",
+      "Workshop: Building a GraphQL Gateway",
+      "GraphQL Performance Patterns"
+    ],
+    organizer: "GraphQL Foundation",
+    tags: ["GraphQL", "API", "Backend", "TypeScript"],
+    createdAt: new Date("2025-10-15"),
+    updatedAt: new Date("2025-10-15")
   },
   {
     title: "Mobile Dev Summit",
+    slug: "mobile-dev-summit-2026",
+    description: "Conference dedicated to mobile development across iOS, Android, and cross-platform frameworks. Featuring Flutter, React Native, Swift, and Kotlin experts.",
+    overview: "Two tracks covering native and cross-platform mobile development with hands-on workshops.",
     image: "/images/event8.png",
-    date: "August 18-20, 2026",
-    time: "9:00 AM - 5:00 PM",
+    venue: "Los Angeles Convention Center",
     location: "Los Angeles, CA",
-    type: "Conference",
-    slug: "mobile-dev-summit-2026"
+    date: "2026-08-18",
+    time: "09:00",
+    mode: "offline",
+    audience: "Mobile developers, iOS/Android engineers, Flutter/React Native developers",
+    agenda: [
+      "Flutter 3.22: What's New",
+      "React Native Architecture Updates",
+      "SwiftUI vs Jetpack Compose",
+      "Mobile CI/CD Best Practices",
+      "App Store Optimization Workshop"
+    ],
+    organizer: "Mobile Dev Community",
+    tags: ["Mobile", "Flutter", "React Native", "iOS", "Android"],
+    createdAt: new Date("2026-01-20"),
+    updatedAt: new Date("2026-01-20")
   },
   {
     title: "DevOps Days",
+    slug: "devops-days-2026",
+    description: "Community-driven conference for DevOps practitioners. Open spaces, talks, and workshops on culture, automation, and tooling.",
+    overview: "Two days of DevOps culture, automation, and sharing experiences from the trenches.",
     image: "/images/event9.png",
-    date: "October 10-11, 2026",
-    time: "10:00 AM - 6:00 PM",
+    venue: "McCormick Place",
     location: "Chicago, IL",
-    type: "Conference",
-    slug: "devops-days-2026"
+    date: "2026-10-10",
+    time: "10:00",
+    mode: "offline",
+    audience: "DevOps engineers, SREs, platform engineers, engineering managers",
+    agenda: [
+      "Platform Engineering: Build vs Buy",
+      "Infrastructure as Code Patterns",
+      "Incident Response & Blameless Postmortems",
+      "DevSecOps Integration",
+      "Open Spaces: Your Topics"
+    ],
+    organizer: "DevOps Days Chicago",
+    tags: ["DevOps", "SRE", "Platform Engineering", "Automation"],
+    createdAt: new Date("2026-03-01"),
+    updatedAt: new Date("2026-03-01")
   },
   {
     title: "Full Stack Hackathon",
+    slug: "full-stack-hackathon-2026",
+    description: "Build a full-stack application in 48 hours. Use any stack - React, Next.js, Node.js, Python, databases, and cloud services. Mentors and workshops provided.",
+    overview: "48-hour full-stack hackathon with workshops, mentors, and prizes for best projects.",
     image: "/images/event10.png",
-    date: "November 1-3, 2026",
-    time: "12:00 PM - 11:59 PM",
+    venue: "Boston Convention Center",
     location: "Boston, MA",
-    type: "Hackathon",
-    slug: "full-stack-hackathon-2026"
+    date: "2026-11-01",
+    time: "12:00",
+    mode: "offline",
+    audience: "Full-stack developers, frontend/backend engineers, students",
+    agenda: [
+      "Kickoff & Team Formation",
+      "Workshop: Next.js 15 with Server Actions",
+      "Workshop: Database Design with Prisma",
+      "Hacking Session 1",
+      "Mentor Check-ins",
+      "Hacking Session 2",
+      "Demo Day & Awards"
+    ],
+    organizer: "University Hackathon League",
+    tags: ["Hackathon", "Full Stack", "Next.js", "TypeScript"],
+    createdAt: new Date("2026-04-01"),
+    updatedAt: new Date("2026-04-01")
   }
 ];

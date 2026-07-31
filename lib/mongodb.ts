@@ -57,6 +57,19 @@ async function connectDB(): Promise<typeof mongoose> {
   } catch (error) {
     // Reset promise on error to allow retry
     cached.promise = null;
+
+    // Provide more helpful error message for common connection issues
+    if (error instanceof Error) {
+      if (error.message.includes('ECONNREFUSED') || error.message.includes('querySrv')) {
+        throw new Error(
+          'Unable to connect to MongoDB Atlas. Please check your network connection and ensure the MONGODB_URI is correct. ' +
+          'If running locally, verify your IP is whitelisted in MongoDB Atlas Network Access.'
+        );
+      }
+      if (error.message.includes('authentication failed') || error.message.includes('auth failed')) {
+        throw new Error('MongoDB authentication failed. Please check your MONGODB_URI credentials.');
+      }
+    }
     throw error;
   }
 
