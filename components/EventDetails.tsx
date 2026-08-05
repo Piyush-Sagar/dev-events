@@ -11,16 +11,16 @@ const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL;
 // Helper function to get local event image based on slug
 function getLocalEventImage(slug: string): string {
   const imageMap: Record<string, string> = {
-    'devcon-2024': '/images/event1.png',
-    'react-summit-2024': '/images/event2.png',
-    'vue-conf-2024': '/images/event3.png',
-    'node-congress-2024': '/images/event4.png',
-    'typescript-summit-2024': '/images/event5.png',
-    'nextjs-conf-2024': '/images/event6.png',
-    'graphql-summit-2024': '/images/event7.png',
-    'rust-conf-2024': '/images/event8.png',
-    'go-conference-2024': '/images/event9.png',
-    'python-summit-2024': '/images/event10.png',
+    'react-conf-2026': '/images/event1.png',
+    'nodejs-interactive-2026': '/images/event2.png',
+    'ai-hackathon-weekend-2026': '/images/event3.png',
+    'cloud-native-devcon-2026': '/images/event4.png',
+    'web3-summit-2026': '/images/event5.png',
+    'local-dev-meetup-2026': '/images/event6.png',
+    'graphql-galaxy-2026': '/images/event7.png',
+    'mobile-dev-summit-2026': '/images/event8.png',
+    'devops-days-2026': '/images/event9.png',
+    'full-stack-hackathon-2026': '/images/event10.png',
   };
   return imageMap[slug] || '/images/event-full.png';
 }
