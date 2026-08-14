@@ -4,31 +4,25 @@ import {IEvent} from "@/database";
 import {cacheLife} from "next/cache";
 import { fallbackEvents } from "@/lib/constants";
 
-const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL;
-
-if (!BASE_URL) {
-  throw new Error('NEXT_PUBLIC_BASE_URL environment variable is not set');
-}
+import connectDB from "@/lib/mongodb";
+import { Event } from "@/database";
 
 async function fetchEvents(): Promise<IEvent[]> {
   try {
-    const response = await fetch(`${BASE_URL}/api/events`, {
-      next: { revalidate: 3600 } // Cache for 1 hour
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      console.error('Failed to fetch events:', response.status, errorData);
-      // Fall back to local events when API fails
-      console.warn('Falling back to local events data');
+    await connectDB();
+    const events = await Event.find().sort({ createdAt: -1 }).lean();
+    
+    // Serialize Mongoose documents to plain objects (converts ObjectIds to strings)
+    const serializedEvents = JSON.parse(JSON.stringify(events));
+    
+    if (!serializedEvents || serializedEvents.length === 0) {
       return fallbackEvents as IEvent[];
     }
-
-    const data = await response.json();
-    return data.events || fallbackEvents as IEvent[];
+    
+    return serializedEvents as IEvent[];
   } catch (error) {
     console.error('Error fetching events:', error);
-    // Fall back to local events on network/parse errors
+    // Fall back to local events when API/DB fails
     console.warn('Falling back to local events data');
     return fallbackEvents as IEvent[];
   }

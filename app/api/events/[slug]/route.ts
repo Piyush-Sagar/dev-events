@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 
 import connectDB from '@/lib/mongodb';
 import Event, { IEvent } from '@/database/event.model';
+import { fallbackEvents } from '@/lib/constants';
 
 // Define route params type for type safety
 type RouteParams = {
@@ -18,23 +19,23 @@ export async function GET(
   req: NextRequest,
   { params }: RouteParams
 ): Promise<NextResponse> {
+  // Await and extract slug from params
+  const { slug } = await params;
+
+  // Validate slug parameter
+  if (!slug || typeof slug !== 'string' || slug.trim() === '') {
+    return NextResponse.json(
+      { message: 'Invalid or missing slug parameter' },
+      { status: 400 }
+    );
+  }
+
+  // Sanitize slug (remove any potential malicious input)
+  const sanitizedSlug = slug.trim().toLowerCase();
+
   try {
     // Connect to database
     await connectDB();
-
-    // Await and extract slug from params
-    const { slug } = await params;
-
-    // Validate slug parameter
-    if (!slug || typeof slug !== 'string' || slug.trim() === '') {
-      return NextResponse.json(
-        { message: 'Invalid or missing slug parameter' },
-        { status: 400 }
-      );
-    }
-
-    // Sanitize slug (remove any potential malicious input)
-    const sanitizedSlug = slug.trim().toLowerCase();
 
     // Query events by slug
     const event = await Event.findOne({ slug: sanitizedSlug }).lean();
@@ -56,6 +57,16 @@ export async function GET(
     // Log error for debugging (only in development)
     if (process.env.NODE_ENV === 'development') {
       console.error('Error fetching events by slug:', error);
+    }
+
+    // Fall back to local events when database is unavailable
+    const fallbackEvent = fallbackEvents.find(e => e.slug === sanitizedSlug);
+    if (fallbackEvent) {
+      console.warn('Falling back to local events data');
+      return NextResponse.json(
+        { message: 'Event fetched successfully (fallback)', event: fallbackEvent },
+        { status: 200 }
+      );
     }
 
     // Handle specific error types
