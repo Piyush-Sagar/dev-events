@@ -1,79 +1,10 @@
-import mongoose from 'mongoose';
+import mongoose from "mongoose";
 
-// Define the connection cache type
-type MongooseCache = {
-  conn: typeof mongoose | null;
-  promise: Promise<typeof mongoose> | null;
+const MONGODB_URI = process.env.MONGODB_URI!;
+
+const connectDB = async () => {
+  if (mongoose.connection.readyState === 1) return;
+  await mongoose.connect(MONGODB_URI);
 };
-
-// Extend the global object to include our mongoose cache
-declare global {
-  // eslint-disable-next-line no-var
-  var mongoose: MongooseCache | undefined;
-}
-
-const MONGODB_URI = process.env.MONGODB_URI;
-
-
-// Initialize the cache on the global object to persist across hot reloads in development
-let cached: MongooseCache = global.mongoose || { conn: null, promise: null };
-
-if (!global.mongoose) {
-  global.mongoose = cached;
-}
-
-/**
- * Establishes a connection to MongoDB using Mongoose.
- * Caches the connection to prevent multiple connections during development hot reloads.
- * @returns Promise resolving to the Mongoose instance
- */
-async function connectDB(): Promise<typeof mongoose> {
-  // Return existing connection if available
-  if (cached.conn) {
-    return cached.conn;
-  }
-
-  // Return existing connection promise if one is in progress
-  if (!cached.promise) {
-    // Validate MongoDB URI exists
-    if (!MONGODB_URI) {
-      throw new Error(
-        'Please define the MONGODB_URI environment variable inside .env.local'
-      );
-    }
-    const options = {
-      bufferCommands: false, // Disable Mongoose buffering
-    };
-
-    // Create a new connection promise
-    cached.promise = mongoose.connect(MONGODB_URI!, options).then((mongoose) => {
-      return mongoose;
-    });
-  }
-
-  try {
-    // Wait for the connection to establish
-    cached.conn = await cached.promise;
-  } catch (error) {
-    // Reset promise on error to allow retry
-    cached.promise = null;
-
-    // Provide more helpful error message for common connection issues
-    if (error instanceof Error) {
-      if (error.message.includes('ECONNREFUSED') || error.message.includes('querySrv')) {
-        throw new Error(
-          'Unable to connect to MongoDB Atlas. Please check your network connection and ensure the MONGODB_URI is correct. ' +
-          'If running locally, verify your IP is whitelisted in MongoDB Atlas Network Access.'
-        );
-      }
-      if (error.message.includes('authentication failed') || error.message.includes('auth failed')) {
-        throw new Error('MongoDB authentication failed. Please check your MONGODB_URI credentials.');
-      }
-    }
-    throw error;
-  }
-
-  return cached.conn;
-}
 
 export default connectDB;
