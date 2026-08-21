@@ -1,5 +1,6 @@
 import {NextRequest, NextResponse} from "next/server";
 import { v2 as cloudinary } from 'cloudinary';
+import { revalidatePath, revalidateTag } from 'next/cache';
 
 import connectDB from "@/lib/mongodb";
 import Event from '@/database/event.model';
@@ -10,20 +11,23 @@ export async function POST(req: NextRequest) {
 
         const formData = await req.formData();
 
-        let event;
-
-        try {   
-            event = Object.fromEntries(formData.entries());
-        } catch (e) {
-            return NextResponse.json({ message: 'Invalid JSON data format'}, { status: 400 })
-        }
+        const event = Object.fromEntries(formData.entries());
 
         const file = formData.get('image') as File;
 
         if(!file) return NextResponse.json({ message: 'Image file is required'}, { status: 400 })
 
-        let tags = JSON.parse(formData.get('tags') as string);
-        let agenda = JSON.parse(formData.get('agenda') as string);
+        let tags: string[];
+        let agenda: string[];
+
+        try {
+            tags = JSON.parse(formData.get('tags') as string);
+            agenda = JSON.parse(formData.get('agenda') as string);
+
+            if (!Array.isArray(tags) || !Array.isArray(agenda)) throw new Error();
+        } catch {
+            return NextResponse.json({ message: "Invalid JSON format for 'tags' or 'agenda' field"}, { status: 400 })
+        }
 
         const arrayBuffer = await file.arrayBuffer();
         const buffer = Buffer.from(arrayBuffer);
@@ -43,6 +47,9 @@ export async function POST(req: NextRequest) {
             tags: tags,
             agenda: agenda,
         });
+
+        revalidatePath('/', 'layout');
+        revalidateTag('events', 'max');
 
         return NextResponse.json({ message: 'Event created successfully', event: createdEvent }, { status: 201 });
     } catch (e) {
