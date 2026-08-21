@@ -3,6 +3,7 @@ import {IEvent} from "@/database";
 import {getSimilarEventsBySlug} from "@/lib/actions/event.actions";
 import Image from "next/image";
 import BookEvent from "@/components/BookEvent";
+import EventActions from "@/components/EventActions";
 import EventCard from "@/components/EventCard";
 import {cacheLife} from "next/cache";
 
@@ -59,7 +60,7 @@ const EventDetails = async ({ params }: { params: string }) => {
     let event;
     try {
         const request = await fetch(`${BASE_URL}/api/events/${slug}`, {
-            next: { revalidate: 60 }
+            next: { revalidate: 60, tags: ['events'] }
         });
 
         if (!request.ok) {
@@ -143,6 +144,8 @@ const EventDetails = async ({ params }: { params: string }) => {
 
                         <BookEvent eventId={event._id} slug={event.slug} />
                     </div>
+
+                    <EventActions slug={event.slug} />
                 </aside>
             </div>
 

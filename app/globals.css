@@ -270,4 +270,46 @@
       }
     }
   }
+
+  #event-form {
+    @apply mx-auto flex w-full max-w-3xl flex-col gap-8;
+
+    .form-grid {
+      @apply grid grid-cols-1 gap-5 sm:grid-cols-2;
+    }
+
+    .field {
+      @apply flex flex-col gap-2;
+
+      label {
+        @apply text-light-100 text-sm font-medium;
+      }
+
+      input,
+      select,
+      textarea {
+        @apply bg-dark-200 rounded-[6px] px-5 py-2.5 outline-none;
+      }
+
+      textarea {
+        @apply min-h-[110px];
+      }
+
+      input[type='file'] {
+        @apply cursor-pointer file:mr-4 file:cursor-pointer file:rounded-[6px] file:border-0 file:bg-primary file:px-4 file:py-2 file:text-sm file:font-semibold file:text-black;
+      }
+    }
+
+    .full-width {
+      @apply sm:col-span-2;
+    }
+
+    button[type='submit'] {
+      @apply bg-primary hover:bg-primary/90 w-full cursor-pointer rounded-[6px] px-4 py-2.5 text-lg font-semibold text-black disabled:cursor-not-allowed disabled:opacity-60;
+    }
+
+    .error {
+      @apply rounded-[6px] bg-destructive/20 px-5 py-3 text-sm text-red-300;
+    }
+  }
 }
