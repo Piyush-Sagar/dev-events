@@ -1,38 +1,17 @@
 import { notFound } from 'next/navigation';
+import { Suspense } from 'react';
 
-import EventForm, { EventFormInitialData } from '@/components/EventForm';
-import { fallbackEvents } from '@/lib/constants';
-import connectDB from '@/lib/mongodb';
-import { Event } from '@/database';
+import EventForm from '@/components/EventForm';
+import { getEventBySlug } from '@/lib/events';
 
 interface Props {
     params: Promise<{ slug: string }>;
 }
 
-const EditEventPage = async ({ params }: Props) => {
+const EditEventContent = async ({ params }: Props) => {
     const { slug } = await params;
-
-    let initialData: EventFormInitialData | undefined;
-
-    try {
-        await connectDB();
-        const event = await Event.findOne({ slug }).lean();
-
-        if (!event) {
-            return notFound();
-        }
-
-        initialData = JSON.parse(JSON.stringify(event));
-    } catch (error) {
-        console.error('Error fetching event for editing:', error);
-
-        const fallbackEvent = fallbackEvents.find((event) => event.slug === slug);
-        if (!fallbackEvent) {
-            return notFound();
-        }
-
-        initialData = fallbackEvent;
-    }
+    const event = await getEventBySlug(slug);
+    if (!event) return notFound();
 
     return (
         <section className="flex flex-col gap-10">
@@ -44,9 +23,19 @@ const EditEventPage = async ({ params }: Props) => {
                 </p>
             </div>
 
-            <EventForm mode="edit" slug={slug} initialData={initialData} />
+            {event._id ? (
+                <EventForm mode="edit" slug={slug} initialData={event} />
+            ) : (
+                <p className="text-light-200">Sample events cannot be edited. Save events to the database to manage them.</p>
+            )}
         </section>
     );
 };
 
-export default EditEventPage;
+export default function EditEventPage({ params }: Props) {
+    return (
+        <Suspense fallback={<p role="status">Loading event...</p>}>
+            <EditEventContent params={params} />
+        </Suspense>
+    );
+}

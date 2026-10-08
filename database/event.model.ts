@@ -1,7 +1,7 @@
-import { Schema, model, models, Document } from 'mongoose';
+import { Schema, model, models, type Model } from 'mongoose';
 
 // TypeScript interface for Event document
-export interface IEvent extends Document {
+export interface IEvent {
   title: string;
   slug: string;
   description: string;
@@ -30,6 +30,7 @@ const EventSchema = new Schema<IEvent>(
     },
     slug: {
       type: String,
+      required: [true, 'A URL-friendly title is required'],
       lowercase: true,
       trim: true,
     },
@@ -108,27 +109,34 @@ const EventSchema = new Schema<IEvent>(
   }
 );
 
-// Pre-save hook for slug generation and data normalization
-EventSchema.pre('save', function () {
-  const event = this as IEvent;
-
-  if (event.isModified('title') || event.isNew) {
-    event.slug = generateSlug(event.title);
+// Normalize before validation so invalid dates/times produce helpful form errors.
+EventSchema.pre('validate', function () {
+  if (this.isModified('title') || this.isNew) {
+    this.slug = generateSlug(this.title);
+    if (!this.slug) this.invalidate('title', 'Title must contain letters or numbers.');
   }
 
-  if (event.isModified('date')) {
-    event.date = normalizeDate(event.date);
+  if (this.isModified('date')) {
+    try {
+      this.date = normalizeDate(this.date);
+    } catch {
+      this.invalidate('date', 'Please provide a valid date.');
+    }
   }
 
-  if (event.isModified('time')) {
-    event.time = normalizeTime(event.time);
+  if (this.isModified('time')) {
+    try {
+      this.time = normalizeTime(this.time);
+    } catch {
+      this.invalidate('time', 'Please provide a valid time.');
+    }
   }
 });
 
 
 // Helper function to generate URL-friendly slug
 function generateSlug(title: string): string {
-  return title
+  return (title || '')
     .toLowerCase()
     .trim()
     .replace(/[^a-z0-9\s-]/g, '') // Remove special characters
@@ -143,7 +151,11 @@ function normalizeDate(dateString: string): string {
   if (isNaN(date.getTime())) {
     throw new Error('Invalid date format');
   }
-  return date.toISOString().split('T')[0]; // Return YYYY-MM-DD format
+  const normalized = date.toISOString().split('T')[0];
+  if (/^\d{4}-\d{2}-\d{2}$/.test(dateString) && normalized !== dateString) {
+    throw new Error('Invalid calendar date');
+  }
+  return normalized;
 }
 
 // Helper function to normalize time format
@@ -161,6 +173,7 @@ function normalizeTime(timeString: string): string {
   const period = match[4]?.toUpperCase();
   
   if (period) {
+    if (hours < 1 || hours > 12) throw new Error('Invalid 12-hour time');
     // Convert 12-hour to 24-hour format
     if (period === 'PM' && hours !== 12) hours += 12;
     if (period === 'AM' && hours === 12) hours = 0;
@@ -179,6 +192,6 @@ EventSchema.index({ slug: 1 }, { unique: true, sparse: true });
 // Create compound index for common queries
 EventSchema.index({ date: 1, mode: 1 });
 
-const Event = models.Event || model<IEvent>('Event', EventSchema);
+const Event = (models.Event as Model<IEvent> | undefined) || model<IEvent>('Event', EventSchema);
 
 export default Event;

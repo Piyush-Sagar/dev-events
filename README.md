@@ -1,38 +1,82 @@
-This website is not ready yet
+# DevEvents
 
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+A Next.js app for discovering developer conferences, hackathons, and meetups. Browse event details, book a spot by email, and create, edit, or delete events.
 
-## Getting Started
+## Requirements
 
-First, run the development server:
+- Node.js 20.19 or newer and npm
+- MongoDB (local or hosted) for persistent events and bookings
+- A Cloudinary account for event image uploads
 
-```bash
+## Run locally
+
+```powershell
+npm ci
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open http://localhost:3000. Without `MONGODB_URI`, the app displays ten sample events. Sample details and related events work, but samples cannot be booked, edited, or deleted.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Development uses Webpack to avoid runaway Turbopack CSS workers observed on Windows. Production builds use the default Next.js bundler.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+To enable persistence, copy the example configuration:
 
-## Learn More
+```powershell
+Copy-Item .env.example .env.local
+```
 
-To learn more about Next.js, take a look at the following resources:
+Set `MONGODB_URI` to your database connection string and `CLOUDINARY_URL` to your Cloudinary URL (`cloudinary://API_KEY:API_SECRET@CLOUD_NAME`). Start MongoDB or allow your machine to access your hosted database, then restart the development server. An empty connected database displays an empty event list. No base URL is required.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Sample data
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+After configuring MongoDB:
 
-## Deploy on Vercel
+```powershell
+npm run seed
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+This inserts missing sample events by slug. Existing events and bookings are preserved, so it is safe to rerun. The script loads `.env.local` and `.env`; shell environment variables take precedence.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Checks and production
+
+```powershell
+npm run lint
+npm run typecheck
+npm test
+npm run build
+npm run start
+```
+
+The production server defaults to port 3000. Set environment variables on your deployment platform before building and starting. Builds validate TypeScript errors.
+
+## Project structure
+
+- `app/`: App Router pages, layout, styles, and API routes
+- `components/`: Event cards, event details, create/edit and booking forms, navigation, WebGL background
+- `database/`: Mongoose Event and Booking models
+- `lib/events.ts`: Cached, serialized event queries and booking counts
+- `lib/actions/`: Booking and related-event server actions
+- `lib/mongodb.ts`: Shared MongoDB connection helper
+- `lib/event-input.ts`: Allowed form fields and upload validation
+- `lib/cloudinary.ts`: Event image uploads
+- `lib/constants.ts`: Sample events
+- `scripts/seed.ts`: Non-destructive sample-data seeding
+- `public/`: Local images and icons
+- `tests/`: Regression tests
+
+## Routes
+
+| Route | Purpose |
+| --- | --- |
+| `/` | Event listing |
+| `/events/[slug]` | Details, bookings, related events, management |
+| `/create-event` | Create event |
+| `/events/[slug]/edit` | Edit saved event |
+| `/api/events` | GET events; POST multipart event data |
+| `/api/events/[slug]` | GET, PUT/PATCH multipart updates, DELETE |
+
+Tags and agenda are JSON arrays of non-empty strings in multipart requests. Images must have an image MIME type and be no larger than 5 MB. Renaming an event regenerates its slug. Booking email addresses are normalized, and duplicate bookings are rejected.
+
+## Current limitations
+
+Event management has no authentication or ownership checks. Add access control before deploying event creation, editing, and deletion to an untrusted public audience. Bookings are stored in the database; confirmation emails and payments are not implemented. Deleted or replaced event images are not automatically removed from Cloudinary.

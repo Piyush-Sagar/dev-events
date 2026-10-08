@@ -8,15 +8,11 @@ export async function generateStaticParams() {
   }));
 }
 
-const EventDetailsPage = async ({ params }: { params: Promise<{ slug: string }>}) => {
-    const { slug } = await params;
-
+const EventDetailsPage = ({ params }: { params: Promise<{ slug: string }>}) => {
     return (
-        <main>
-            <Suspense fallback={<div>Loading...</div>}>
-                <EventDetails params={slug} />
-            </Suspense>
-        </main>
+        <Suspense fallback={<p role="status">Loading event...</p>}>
+            <EventDetails params={params} />
+        </Suspense>
     )
 }
 export default EventDetailsPage

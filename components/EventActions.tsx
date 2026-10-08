@@ -25,6 +25,7 @@ const EventActions = ({ slug }: { slug: string }) => {
 
             if (res.ok) {
                 router.push('/');
+                router.refresh();
                 return;
             }
 
@@ -43,7 +44,7 @@ const EventActions = ({ slug }: { slug: string }) => {
                 Manage Event
             </p>
 
-            {error && <p className="text-sm text-red-400">{error}</p>}
+            {error && <p role="alert" className="text-sm text-red-400">{error}</p>}
 
             <Link
                 href={`/events/${slug}/edit`}

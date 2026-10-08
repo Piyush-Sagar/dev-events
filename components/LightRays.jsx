@@ -81,6 +81,7 @@ const LightRays = ({
 
   useEffect(() => {
     if (!isVisible || !containerRef.current) return;
+    let disposed = false;
 
     if (cleanupFunctionRef.current) {
       cleanupFunctionRef.current();
@@ -92,7 +93,7 @@ const LightRays = ({
 
       await new Promise(resolve => setTimeout(resolve, 10));
 
-      if (!containerRef.current) return;
+      if (disposed || !containerRef.current) return;
 
       const renderer = new Renderer({
         dpr: Math.min(window.devicePixelRatio, 2),
@@ -319,9 +320,12 @@ void main() {
       };
     };
 
-    initializeWebGL();
+    initializeWebGL().catch(error => {
+      console.warn('Background effect unavailable:', error);
+    });
 
     return () => {
+      disposed = true;
       if (cleanupFunctionRef.current) {
         cleanupFunctionRef.current();
         cleanupFunctionRef.current = null;

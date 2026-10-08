@@ -89,6 +89,7 @@ const EventForm = ({ mode, slug, initialData }: Props) => {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (submitting) return;
         setError('');
 
         const tags = values.tags.split(',').map((tag) => tag.trim()).filter(Boolean);
@@ -101,6 +102,10 @@ const EventForm = ({ mode, slug, initialData }: Props) => {
 
         if (mode === 'create' && !image) {
             setError('Please select an image file.');
+            return;
+        }
+        if (image && (!image.type.startsWith('image/') || image.size > 5 * 1024 * 1024)) {
+            setError('Please select an image file of 5 MB or smaller.');
             return;
         }
 
@@ -126,6 +131,7 @@ const EventForm = ({ mode, slug, initialData }: Props) => {
             }
 
             router.push(`/events/${data.event.slug}`);
+            router.refresh();
         } catch {
             setError('Network error. Please try again.');
         } finally {
@@ -135,7 +141,7 @@ const EventForm = ({ mode, slug, initialData }: Props) => {
 
     return (
         <form id="event-form" onSubmit={handleSubmit}>
-            {error && <p className="error">{error}</p>}
+            {error && <p role="alert" className="error">{error}</p>}
 
             <div className="form-grid">
                 <div className="field full-width">

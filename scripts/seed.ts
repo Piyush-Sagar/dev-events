@@ -1,51 +1,33 @@
-import { config } from 'dotenv';
-import Event, { IEvent } from '@/database/event.model';
+import { existsSync } from 'node:fs';
+import mongoose from 'mongoose';
+import Event from '@/database/event.model';
 import { fallbackEvents } from '@/lib/constants';
 import connectDB from '@/lib/mongodb';
 
-// Load environment variables
-config({ path: '.env.local' });
-config({ path: '.env' });
-
-const MONGODB_URI = process.env.MONGODB_URI;
-
-async function seedDatabase() {
-  if (!MONGODB_URI) {
-    console.error('❌ MONGODB_URI is not defined in environment variables');
-    console.log('Please check your .env.local or .env file');
-    process.exit(1);
-  }
-
-  try {
-    console.log('🔌 Connecting to MongoDB...');
-    await connectDB();
-    console.log('✅ Connected to MongoDB');
-
-    // Clear existing events (optional - comment out if you want to keep existing data)
-    console.log('🗑️  Clearing existing events...');
-    await Event.deleteMany({});
-    console.log('✅ Cleared existing events');
-
-    // Transform fallbackEvents to match the database schema (remove createdAt/updatedAt as they're auto-generated)
-    const eventsToSeed = fallbackEvents.map(({ createdAt, updatedAt, ...event }) => event) as Omit<IEvent, 'createdAt' | 'updatedAt'>[];
-
-    console.log(`🌱 Seeding ${eventsToSeed.length} events...`);
-
-    const insertedEvents = await Event.insertMany(eventsToSeed);
-
-    console.log(`✅ Successfully seeded ${insertedEvents.length} events:`);
-    insertedEvents.forEach((event) => {
-      console.log(`   - ${event.title} (${event.slug})`);
-    });
-
-    console.log('\n🎉 Database seeding completed successfully!');
-  } catch (error) {
-    console.error('❌ Error seeding database:', error);
-    process.exit(1);
-  } finally {
-    process.exit(0);
-  }
+// Keep externally supplied variables; local settings take precedence over .env.
+for (const path of ['.env.local', '.env']) {
+    if (existsSync(path)) process.loadEnvFile(path);
 }
 
-// Run the seeder
-seedDatabase();
+async function seedDatabase() {
+    try {
+        await connectDB();
+        let inserted = 0;
+        for (const sample of fallbackEvents) {
+            const result = await Event.updateOne(
+                { slug: sample.slug },
+                { $setOnInsert: { ...sample, createdAt: new Date(), updatedAt: new Date() } },
+                { upsert: true, runValidators: true, timestamps: false },
+            );
+            inserted += result.upsertedCount;
+        }
+        console.log(`Added ${inserted} sample events. Existing events and bookings were preserved.`);
+    } catch (error) {
+        console.error('Unable to seed the database:', error instanceof Error ? error.message : error);
+        process.exitCode = 1;
+    } finally {
+        await mongoose.disconnect();
+    }
+}
+
+void seedDatabase();

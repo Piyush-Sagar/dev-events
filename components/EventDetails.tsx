@@ -1,30 +1,10 @@
 import {notFound} from "next/navigation";
-import {IEvent} from "@/database";
 import {getSimilarEventsBySlug} from "@/lib/actions/event.actions";
 import Image from "next/image";
 import BookEvent from "@/components/BookEvent";
 import EventActions from "@/components/EventActions";
 import EventCard from "@/components/EventCard";
-import {cacheLife} from "next/cache";
-
-const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL;
-
-// Helper function to get local event image based on slug
-function getLocalEventImage(slug: string): string {
-  const imageMap: Record<string, string> = {
-    'react-conf-2026': '/images/event1.png',
-    'nodejs-interactive-2026': '/images/event2.png',
-    'ai-hackathon-weekend-2026': '/images/event3.png',
-    'cloud-native-devcon-2026': '/images/event4.png',
-    'web3-summit-2026': '/images/event5.png',
-    'local-dev-meetup-2026': '/images/event6.png',
-    'graphql-galaxy-2026': '/images/event7.png',
-    'mobile-dev-summit-2026': '/images/event8.png',
-    'devops-days-2026': '/images/event9.png',
-    'full-stack-hackathon-2026': '/images/event10.png',
-  };
-  return imageMap[slug] || '/images/event-full.png';
-}
+import { getBookingCount, getEventBySlug } from '@/lib/events';
 
 const EventDetailItem = ({ icon, alt, label }: { icon: string; alt: string; label: string; }) => (
     <div className="flex-row-gap-2 items-center">
@@ -52,58 +32,28 @@ const EventTags = ({ tags }: { tags: string[] }) => (
     </div>
 )
 
-const EventDetails = async ({ params }: { params: string }) => {
-    'use cache'
-    cacheLife('hours');
-    const slug = params;
+const EventDetails = async ({ params }: { params: Promise<{ slug: string }> }) => {
+    const { slug } = await params;
+    const event = await getEventBySlug(slug);
+    if (!event) return notFound();
 
-    let event;
-    try {
-        const request = await fetch(`${BASE_URL}/api/events/${slug}`, {
-            next: { revalidate: 60, tags: ['events'] }
-        });
-
-        if (!request.ok) {
-            if (request.status === 404) {
-                return notFound();
-            }
-            console.error('Failed to fetch event:', request.status, request.statusText);
-            return notFound();
-        }
-
-        const response = await request.json();
-        event = response.event;
-
-        if (!event) {
-            return notFound();
-        }
-    } catch (error) {
-        console.error('Error fetching event:', error);
-        return notFound();
-    }
-
-    const { description, image, overview, date, time, location, mode, agenda, audience, tags, organizer } = event;
-
-    if(!description) return notFound();
-
-    const bookings = 10;
-
-    const similarEvents: IEvent[] = event ? await getSimilarEventsBySlug(slug) : [];
-
-    // Use local image if available, otherwise fall back to the database image
-    const eventImage = image || getLocalEventImage(slug);
+    const { title, description, image, overview, date, time, location, mode, agenda, audience, tags, organizer } = event;
+    const [bookings, similarEvents] = await Promise.all([
+        event._id ? getBookingCount(event._id) : Promise.resolve(null),
+        getSimilarEventsBySlug(slug),
+    ]);
 
     return (
         <section id="event">
             <div className="header">
-                <h1>Event Description</h1>
+                <h1>{title}</h1>
                 <p>{description}</p>
             </div>
 
             <div className="details">
                 {/*    Left Side - Event Content */}
                 <div className="content">
-                    <Image src={eventImage} alt="Event Banner" width={800} height={800} className="banner" />
+                    <Image src={image || '/images/event-full.png'} alt={title} width={800} height={457} className="banner" />
 
                     <section className="flex-col-gap-2">
                         <h2>Overview</h2>
@@ -134,29 +84,33 @@ const EventDetails = async ({ params }: { params: string }) => {
                 <aside className="booking">
                     <div className="signup-card">
                         <h2>Book Your Spot</h2>
-                        {bookings > 0 ? (
+                        {bookings !== null && (bookings > 0 ? (
                             <p className="text-sm">
-                                Join {bookings} people who have already booked their spot!
+                                Join {bookings} {bookings === 1 ? 'person who has' : 'people who have'} already booked their spot!
                             </p>
                         ): (
                             <p className="text-sm">Be the first to book your spot!</p>
-                        )}
+                        ))}
 
-                        <BookEvent eventId={event._id} slug={event.slug} />
+                        {event._id ? (
+                            <BookEvent eventId={event._id} slug={event.slug} />
+                        ) : (
+                            <p>This is a sample event. Booking becomes available when the event is saved to the database.</p>
+                        )}
                     </div>
 
-                    <EventActions slug={event.slug} />
+                    {event._id && <EventActions slug={event.slug} />}
                 </aside>
             </div>
 
-            <div className="flex w-full flex-col gap-4 pt-20">
+            {similarEvents.length > 0 && <div className="flex w-full flex-col gap-4 pt-20">
                 <h2>Similar Events</h2>
                 <div className="events">
-                    {similarEvents.length > 0 && similarEvents.map((similarEvent: IEvent) => (
-                        <EventCard key={similarEvent.title || similarEvent.slug} {...similarEvent} />
+                    {similarEvents.map((similarEvent) => (
+                        <EventCard key={similarEvent.slug} {...similarEvent} />
                     ))}
                 </div>
-            </div>
+            </div>}
         </section>
     )
 }

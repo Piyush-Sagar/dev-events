@@ -1,52 +1,27 @@
 import ExploreBtn from "@/components/ExploreBtn";
 import EventCard from "@/components/EventCard";
-import {IEvent} from "@/database";
-import {cacheLife} from "next/cache";
-import { fallbackEvents } from "@/lib/constants";
-
-import connectDB from "@/lib/mongodb";
-import { Event } from "@/database";
-
-async function fetchEvents(): Promise<IEvent[]> {
-  try {
-    await connectDB();
-    const events = await Event.find().sort({ createdAt: -1 }).lean();
-    
-    // Serialize Mongoose documents to plain objects (converts ObjectIds to strings)
-    const serializedEvents = JSON.parse(JSON.stringify(events));
-    
-    if (!serializedEvents || serializedEvents.length === 0) {
-      return fallbackEvents as IEvent[];
-    }
-    
-    return serializedEvents as IEvent[];
-  } catch (error) {
-    console.error('Error fetching events:', error);
-    // Fall back to local events when API/DB fails
-    console.warn('Falling back to local events data');
-    return fallbackEvents as IEvent[];
-  }
-}
+import { getEvents } from "@/lib/events";
 
 const Page = async () => {
-    'use cache';
-    cacheLife('hours')
-    const events = await fetchEvents();
+    const events = await getEvents();
 
     return (
-        <section>
-            <h1 className="text-center">The Hub for Every Dev <br /> Event You Can't Miss</h1>
+        <section id="home">
+            <h1 className="text-center">The Hub for Every Dev <br /> Event You Can&apos;t Miss</h1>
             <p className="text-center mt-5">Hackathons, Meetups, and Conferences, All in One Place</p>
 
             <ExploreBtn />
 
-            <div className="mt-20 space-y-7">
+            <div id="events" className="mt-20 scroll-mt-24 space-y-7">
                 <h3>Featured Events</h3>
+                {events.some((event) => !event._id) && (
+                    <p className="text-sm text-light-200">Showing sample events. Booking and event management are available for saved events.</p>
+                )}
 
                 <ul className="events">
                     {events.length > 0 ? (
-                      events.map((event: IEvent) => (
-                        <li key={event.title || event.slug} className="list-none">
+                      events.map((event) => (
+                        <li key={event.slug} className="list-none">
                             <EventCard {...event} />
                         </li>
                       ))
