@@ -25,6 +25,10 @@ export async function POST(req: NextRequest) {
 }
 
 export async function GET() {
-    const events = await getEvents();
-    return NextResponse.json({ message: 'Events fetched successfully', events });
+    try {
+        const events = await getEvents();
+        return NextResponse.json({ message: 'Events fetched successfully', events });
+    } catch (error) {
+        return apiError(error, 'Community events are temporarily unavailable.');
+    }
 }

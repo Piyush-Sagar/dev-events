@@ -1,6 +1,5 @@
 import { cacheLife, cacheTag } from 'next/cache';
 import { Booking, Event, type IEvent } from '@/database';
-import { fallbackEvents } from '@/lib/constants';
 import connectDB from '@/lib/mongodb';
 
 // Values passed into client components must contain neither ObjectIds nor documents.
@@ -19,14 +18,9 @@ export async function getEvents(): Promise<EventView[]> {
   cacheLife('minutes');
   cacheTag('events');
 
-  if (!process.env.MONGODB_URI) return serialize<EventView[]>(fallbackEvents);
-  try {
-    await connectDB();
-    return serialize<EventView[]>(await Event.find().sort({ createdAt: -1 }).lean());
-  } catch (error) {
-    console.error('Unable to load events; showing samples:', error);
-    return serialize<EventView[]>(fallbackEvents);
-  }
+  if (!process.env.MONGODB_URI) return [];
+  await connectDB();
+  return serialize<EventView[]>(await Event.find().sort({ createdAt: -1 }).lean());
 }
 
 export async function getEventBySlug(slug: string): Promise<EventView | null> {
@@ -35,17 +29,10 @@ export async function getEventBySlug(slug: string): Promise<EventView | null> {
   cacheTag('events');
 
   const normalizedSlug = slug.trim().toLowerCase();
-  if (process.env.MONGODB_URI) {
-    try {
-      await connectDB();
-      const event = await Event.findOne({ slug: normalizedSlug }).lean();
-      return event ? serialize<EventView>(event) : null;
-    } catch (error) {
-      console.error('Unable to load event; checking samples:', error);
-    }
-  }
-  const sample = fallbackEvents.find((event) => event.slug === normalizedSlug);
-  return sample ? serialize<EventView>(sample) : null;
+  if (!process.env.MONGODB_URI) return null;
+  await connectDB();
+  const event = await Event.findOne({ slug: normalizedSlug }).lean();
+  return event ? serialize<EventView>(event) : null;
 }
 
 export async function getBookingCount(eventId: string): Promise<number | null> {

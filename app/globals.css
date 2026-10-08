@@ -134,6 +134,17 @@
 }
 
 @layer components {
+  .discovery-controls {
+    input,
+    select {
+      @apply min-w-0 w-full rounded-lg border border-dark-200 bg-dark-200 px-4 py-3 text-light-100 outline-none focus:border-primary focus:ring-1 focus:ring-primary disabled:opacity-40;
+    }
+  }
+
+  .discovery-card {
+    @apply transition-colors hover:border-primary/40;
+  }
+
   #home {
     .subheading {
       @apply text-light-100 text-lg max-sm:text-sm text-center mt-5;
