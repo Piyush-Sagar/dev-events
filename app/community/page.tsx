@@ -1,9 +1,12 @@
 import { Suspense } from 'react';
 import Link from 'next/link';
+import { connection } from 'next/server';
 import EventCard from '@/components/EventCard';
 import { getEvents } from '@/lib/events';
 
 async function CommunityEvents() {
+    // Database availability should affect this runtime section, not the deployment build.
+    await connection();
     let events;
     try {
         events = await getEvents();
