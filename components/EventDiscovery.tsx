@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
 import { LocateFixed, Search } from 'lucide-react';
 import DiscoveryCard from '@/components/DiscoveryCard';
 import type { Coordinates, DiscoveryResult, EventCity } from '@/lib/discovery/types';
-import { locationFailureMessage, locationQueryCoordinates, shareableDiscoveryParams } from '@/lib/discovery/location';
+import { locationFailureMessage, locationQueryCoordinates, shareableDiscoveryParams, shouldDetectLocation, nearbyLocationParams } from '@/lib/discovery/location';
 
 interface Props {
     initialResult: DiscoveryResult | null;
@@ -27,7 +27,8 @@ export default function EventDiscovery({ initialResult, initialError, initialQue
     const [radius, setRadius] = useState(initialParams.get('radius') || '100');
     const [days, setDays] = useState(initialParams.get('days') || '180');
     const [mode, setMode] = useState(initialParams.get('mode') || 'all');
-    const [sort, setSort] = useState(initialParams.get('sort') || 'date');
+    const [sort, setSort] = useState(initialParams.get('sort') || 'distance');
+    const [locationMode, setLocationMode] = useState<'auto' | 'city' | 'worldwide'>(initialParams.has('city') || initialParams.get('location') === 'city' ? 'city' : initialParams.get('location') === 'worldwide' ? 'worldwide' : 'auto');
     const [gps, setGps] = useState<Coordinates | null>(null);
     const [locating, setLocating] = useState(false);
     const [locationError, setLocationError] = useState('');
@@ -64,6 +65,31 @@ export default function EventDiscovery({ initialResult, initialError, initialQue
         }
     }, []);
 
+    const detectLocation = useCallback((params: URLSearchParams, updateUrl = true) => {
+        const requestId = ++locationRequest.current;
+        setLocationMode('auto');
+        setLocationError('');
+        if (!navigator.geolocation || !window.isSecureContext) {
+            setLocationError('Automatic location is unavailable. Choose another location below.');
+            return;
+        }
+        setLocating(true);
+        navigator.geolocation.getCurrentPosition((position) => {
+            if (requestId !== locationRequest.current) return;
+            const location = { latitude: position.coords.latitude, longitude: position.coords.longitude };
+            setGps(location);
+            setCity(''); setCityText(''); setSuggestions([]); setSuggestionError('');
+            setLocating(false);
+            const nearby = nearbyLocationParams(params, location);
+            setMode('in-person'); setSort(nearby.get('sort')!);
+            void loadEvents(nearby, updateUrl);
+        }, (failure) => {
+            if (requestId !== locationRequest.current) return;
+            setLocating(false);
+            setLocationError(locationFailureMessage(failure.code));
+        }, { enableHighAccuracy: false, timeout: 10000, maximumAge: 300000 });
+    }, [loadEvents]);
+
     useEffect(() => {
         const onBack = () => {
             const params = new URLSearchParams(window.location.search);
@@ -73,17 +99,29 @@ export default function EventDiscovery({ initialResult, initialError, initialQue
             setRadius(params.get('radius') || '100');
             setDays(params.get('days') || '180');
             setMode(params.get('mode') || 'all');
-            setSort(params.get('sort') || 'date');
+            setSort(params.get('sort') || 'distance');
+            setLocationMode(params.has('city') || params.get('location') === 'city' ? 'city' : params.get('location') === 'worldwide' ? 'worldwide' : 'auto');
+            locationRequest.current += 1;
+            setLocating(false);
             setGps(null);
-            void loadEvents(params, false);
+            if (shouldDetectLocation(params)) detectLocation(params, false);
+            else void loadEvents(params, false);
         };
         window.addEventListener('popstate', onBack);
         return () => {
             activeRequest.current?.abort();
-            locationRequest.current += 1;
             window.removeEventListener('popstate', onBack);
         };
-    }, [loadEvents]);
+    }, [loadEvents, detectLocation]);
+
+    useEffect(() => {
+        const params = new URLSearchParams(initialQuery);
+        // Explicit city/worldwide links take precedence over automatic detection.
+        if (shouldDetectLocation(params)) {
+            detectLocation(params);
+        }
+        return () => { locationRequest.current += 1; };
+    }, [initialQuery, detectLocation]);
 
     useEffect(() => {
         if (city || cityText.trim().length < 2) return;
@@ -105,7 +143,7 @@ export default function EventDiscovery({ initialResult, initialError, initialQue
     }, [cityText, city]);
 
     function formParams(location = gps): URLSearchParams {
-        const params = new URLSearchParams({ q: query.trim(), radius, days, mode, sort });
+        const params = new URLSearchParams({ q: query.trim(), radius, days, mode, sort, location: locationMode });
         if (mode !== 'online') {
             if (location) {
                 const rounded = locationQueryCoordinates(location);
@@ -118,8 +156,8 @@ export default function EventDiscovery({ initialResult, initialError, initialQue
 
     function submit(event: FormEvent<HTMLFormElement>) {
         event.preventDefault();
-        if (mode !== 'online' && cityText.trim() && !city && !gps) {
-            setLocationError('Choose a city from the suggestions, or clear the city to browse worldwide.');
+        if (mode !== 'online' && locationMode === 'city' && !city) {
+            setLocationError('Search for a city and choose it from the suggestions.');
             return;
         }
         setLocationError('');
@@ -127,38 +165,23 @@ export default function EventDiscovery({ initialResult, initialError, initialQue
     }
 
     function useLocation() {
-        if (!navigator.geolocation) {
-            setLocationError('Your browser does not support location. Choose a city instead.');
-            return;
-        }
-        if (!window.isSecureContext) {
-            setLocationError('Location requires HTTPS. Choose a city instead.');
-            return;
-        }
-        setLocating(true);
-        setLocationError('');
-        const requestId = ++locationRequest.current;
-        navigator.geolocation.getCurrentPosition((position) => {
-            if (requestId !== locationRequest.current) return;
-            const location = { latitude: position.coords.latitude, longitude: position.coords.longitude };
-            setGps(location);
-            setCity('');
-            setCityText('');
-            setSuggestions([]);
-            setLocating(false);
-            const params = formParams(location);
-            params.set('mode', 'in-person');
-            params.delete('city');
-            const rounded = locationQueryCoordinates(location);
-            params.set('lat', rounded.lat);
-            params.set('lng', rounded.lng);
-            setMode('in-person');
-            void loadEvents(params);
-        }, (failure) => {
-            if (requestId !== locationRequest.current) return;
-            setLocating(false);
-            setLocationError(locationFailureMessage(failure.code));
-        }, { enableHighAccuracy: false, timeout: 10000, maximumAge: 300000 });
+        detectLocation(formParams());
+    }
+
+    function chooseAnotherLocation() {
+        locationRequest.current += 1;
+        setLocating(false); setLocationMode('city'); setGps(null);
+        setLocationError(''); setSuggestionError('');
+        if (mode === 'online') setMode('in-person');
+        window.requestAnimationFrame(() => document.getElementById('discovery-city')?.focus());
+    }
+
+    function browseWorldwide() {
+        locationRequest.current += 1;
+        setLocating(false); setLocationMode('worldwide'); setLocationError(''); setSuggestionError('');
+        setSuggestions([]); setCity(''); setCityText(''); setGps(null); setQuery('');
+        setMode('all'); setDays('180'); setRadius('100'); setSort('date');
+        void loadEvents(new URLSearchParams('location=worldwide&sort=date'));
     }
 
     function changePage(page: number) {
@@ -172,47 +195,50 @@ export default function EventDiscovery({ initialResult, initialError, initialQue
         <div id="events" className="mt-14 scroll-mt-24 space-y-8">
             <form onSubmit={submit} className="discovery-controls rounded-2xl border border-dark-200 bg-dark-100/90 p-5 sm:p-7">
                 <div className="mb-5 flex flex-wrap items-start justify-between gap-4">
-                    <div><h2 className="text-2xl font-bold">Find events around you</h2><p className="mt-2 text-sm text-light-200">Choose a city, or browse real developer events worldwide.</p></div>
-                    <button type="button" onClick={useLocation} disabled={locating || loading} className="flex items-center gap-2 rounded-lg border border-primary/40 px-4 py-2.5 text-sm text-primary disabled:opacity-50"><LocateFixed size={16} />{locating ? 'Finding location...' : 'Use my location'}</button>
+                    <div><h2 className="text-2xl font-bold">Find events around you</h2><p role="status" className="mt-2 text-sm text-light-200">{locating ? 'Finding your location — allow access in your browser.' : gps ? 'Using your current location. Explore somewhere else anytime.' : locationMode === 'city' ? 'Choose another city to discover events there.' : locationMode === 'worldwide' ? 'Browsing developer events worldwide.' : 'Allow location access for nearby events, or choose another location.'}</p></div>
+                    <div className="flex flex-wrap gap-2"><button type="button" onClick={useLocation} disabled={locating || loading} className="flex items-center gap-2 rounded-lg border border-primary/40 px-4 py-2.5 text-sm text-primary disabled:opacity-50"><LocateFixed size={16} />{locating ? 'Finding location...' : 'Use my location'}</button><button type="button" onClick={chooseAnotherLocation} className="rounded-lg border border-dark-200 px-4 py-2.5 text-sm">Choose another location</button></div>
                 </div>
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                     <label className="flex flex-col gap-2 text-sm">Topic or event name<input value={query} onChange={(event) => setQuery(event.target.value)} maxLength={100} placeholder="React, AI, security..." /></label>
                     <div className="relative flex flex-col gap-2 text-sm">
-                        <label htmlFor="discovery-city">City</label>
+                        <label htmlFor="discovery-city">Custom location / city</label>
                         <input id="discovery-city" value={cityText} disabled={mode === 'online'} autoComplete="off" maxLength={100} placeholder={gps ? 'Using your location' : 'Search Bengaluru, London...'} aria-describedby="city-hint" aria-controls={suggestions.length ? 'city-suggestions' : undefined} onChange={(event) => {
                             locationRequest.current += 1;
-                            setLocating(false); setCityText(event.target.value); setCity(''); setGps(null);
+                            setLocating(false); setLocationMode('city'); setCityText(event.target.value); setCity(''); setGps(null);
                             setSuggestions([]); setSuggestionError(''); setLocationError('');
                         }} />
                         {suggestions.length > 0 && !city && <ul id="city-suggestions" aria-label="Matching cities" className="absolute top-20 z-20 max-h-60 w-full overflow-auto rounded-lg border border-dark-200 bg-dark-200 shadow-xl">
                             {suggestions.map((suggestion) => <li key={suggestion.label} className="list-none"><button type="button" className="w-full px-4 py-3 text-left hover:bg-primary/10 focus:bg-primary/10" onClick={() => {
-                                setCity(suggestion.label); setCityText(suggestion.label); setGps(null); setSuggestions([]); setSuggestionError(''); setLocationError('');
+                                locationRequest.current += 1; setLocating(false); setLocationMode('city'); setCity(suggestion.label); setCityText(suggestion.label); setGps(null); setSuggestions([]); setSuggestionError(''); setLocationError('');
                             }}>{suggestion.label}</button></li>)}
                         </ul>}
                     </div>
                     <label className="flex flex-col gap-2 text-sm">Radius<select value={radius} onChange={(event) => setRadius(event.target.value)} disabled={mode === 'online'}><option value="25">25 km</option><option value="50">50 km</option><option value="100">100 km</option><option value="250">250 km</option><option value="500">500 km</option><option value="1000">1,000 km</option></select></label>
                     <label className="flex flex-col gap-2 text-sm">When<select value={days} onChange={(event) => setDays(event.target.value)}><option value="7">Next 7 days</option><option value="30">Next 30 days</option><option value="90">Next 3 months</option><option value="180">Next 6 months</option><option value="365">Next year</option></select></label>
-                    <label className="flex flex-col gap-2 text-sm">Event format<select value={mode} onChange={(event) => { setMode(event.target.value); setLocationError(''); setSuggestions([]); }}><option value="all">All formats</option><option value="in-person">In person</option><option value="online">Online only</option></select></label>
-                    <label className="flex flex-col gap-2 text-sm">Sort by<select value={sort} onChange={(event) => setSort(event.target.value)}><option value="date">Soonest first</option><option value="distance">Nearest first</option></select></label>
+                    <label className="flex flex-col gap-2 text-sm">Event format<select value={mode} onChange={(event) => { locationRequest.current += 1; setLocating(false); setMode(event.target.value); setLocationError(''); setSuggestions([]); }}><option value="all">All formats</option><option value="in-person">In person</option><option value="online">Online only</option></select></label>
+                    <label className="flex flex-col gap-2 text-sm">Sort by<select value={sort} onChange={(event) => setSort(event.target.value)}><option value="distance">Distance, then popularity</option><option value="popularity">Popularity (reported attendance)</option><option value="date">Soonest first</option></select></label>
                 </div>
                 <div className="mt-5 flex flex-wrap items-center justify-between gap-4">
-                    <p id="city-hint" className="max-w-xl text-xs leading-relaxed text-light-200">Location is optional. Distances are to host cities, not exact venues. Nearby results are in person; choose Online only for remote events. Approximate coordinates stay out of shared links.</p>
+                    <p id="city-hint" className="max-w-xl text-xs leading-relaxed text-light-200">Your browser asks permission for automatic location. Distances are to host cities, not exact venues. Nearby results are in person; choose Online only for remote events. Approximate coordinates stay out of shared links.</p>
                     <button type="submit" disabled={loading || locating} className="flex items-center gap-2 rounded-lg bg-primary px-6 py-3 font-semibold text-black disabled:opacity-50"><Search size={17} />{loading ? 'Searching...' : 'Find events'}</button>
                 </div>
+                <p className="mt-4 text-xs leading-relaxed text-light-200">Popularity uses provider-reported attendance, which is not independently verified. Events without counts follow those with counts when sorting by popularity; distance and date break ties.</p>
                 {(locationError || suggestionError) && <p role="alert" className="mt-4 text-sm text-amber-200">{locationError || suggestionError}</p>}
+                <button type="button" onClick={browseWorldwide} className="mt-4 text-sm text-primary underline">Browse worldwide</button>
             </form>
 
-            <div id="event-results" className="scroll-mt-24" aria-busy={loading}>
+            <div id="event-results" className="scroll-mt-24" aria-busy={loading || locating}>
                 <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
                     <h2 className="text-2xl font-bold">{result?.locationLabel ? `Near ${result.locationLabel}` : new URLSearchParams(appliedQuery).get('mode') === 'online' ? 'Online developer events' : 'Upcoming & ongoing events'}</h2>
-                    <p role="status" className="text-sm text-light-200">{loading ? 'Loading live events...' : error ? 'Live data unavailable' : `${result?.total ?? 0} events${result?.radiusKm ? ` within ${result.radiusKm} km` : ''}`}</p>
+                    <p role="status" className="text-sm text-light-200">{locating ? 'Waiting for your location...' : loading ? 'Loading live events...' : error ? 'Live data unavailable' : `${result?.total ?? 0} events${result?.radiusKm ? ` within ${result.radiusKm} km` : ''}`}</p>
                 </div>
+                {!loading && !locating && !error && result?.events.length && new URLSearchParams(appliedQuery).get('sort') === 'popularity' && result.events.every((event) => event.reportedAttendance === undefined) ? <p role="status" className="mb-6 text-sm text-amber-200">The provider has no attendance figures for these listings. They are ordered by distance, then date.</p> : null}
                 {error ? <div role="alert" className="rounded-xl border border-amber-400/30 bg-amber-400/5 p-6"><p>{error}</p><button type="button" onClick={() => void loadEvents(new URLSearchParams(appliedQuery), false)} className="mt-4 font-semibold text-primary">Try again</button></div>
-                    : loading ? <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3" aria-hidden="true">{[0, 1, 2, 3, 4, 5].map((index) => <div key={index} className="h-72 animate-pulse rounded-2xl bg-dark-200/50" />)}</div>
+                    : loading || locating ? <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3" aria-hidden="true">{[0, 1, 2, 3, 4, 5].map((index) => <div key={index} className="h-72 animate-pulse rounded-2xl bg-dark-200/50" />)}</div>
                     : result?.events.length ? <>
                         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">{result.events.map((event) => <DiscoveryCard key={event.id} event={event} />)}</div>
                         {(result.page > 1 || result.hasMore) && <nav aria-label="Event pagination" className="mt-8 flex items-center justify-center gap-5"><button type="button" onClick={() => changePage(result.page - 1)} disabled={result.page === 1} className="rounded-lg border border-dark-200 px-4 py-2 disabled:opacity-40">Previous</button><span className="text-sm text-light-200">Page {result.page} of {Math.ceil(result.total / result.pageSize)}</span><button type="button" onClick={() => changePage(result.page + 1)} disabled={!result.hasMore} className="rounded-lg border border-dark-200 px-4 py-2 disabled:opacity-40">Next</button></nav>}
-                    </> : <div className="rounded-xl border border-dark-200 p-8 text-center"><h3 className="text-xl">No matching events</h3><p className="mt-3 text-light-200">Try a wider radius, a longer date window, another topic, or online events. This community feed may not cover every local meetup.</p><button type="button" className="mt-5 font-semibold text-primary" onClick={() => { setCity(''); setCityText(''); setGps(null); setQuery(''); setMode('all'); setDays('180'); setRadius('100'); setSort('date'); void loadEvents(new URLSearchParams()); }}>Browse worldwide</button></div>}
+                    </> : <div className="rounded-xl border border-dark-200 p-8 text-center"><h3 className="text-xl">No matching events</h3><p className="mt-3 text-light-200">Try a wider radius, a longer date window, another topic, or online events. This community feed may not cover every local meetup.</p><button type="button" className="mt-5 font-semibold text-primary" onClick={browseWorldwide}>Browse worldwide</button></div>}
             </div>
             <p className="text-xs leading-relaxed text-light-200">Data from <a href="https://developers.events/" target="_blank" rel="noopener noreferrer" className="text-primary underline">developers.events</a>, created by Aurélie Vache and contributors. <a href="https://github.com/scraly/developers-conferences-agenda/blob/main/LICENSE-CONTENT" target="_blank" rel="noopener noreferrer" className="underline">CC BY-NC 4.0</a>. Dates, topic labels, and city distances adapted by DevEvents. Community-curated coverage; confirm schedules and registration on the organizer&apos;s site.</p>
         </div>

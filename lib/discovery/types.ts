@@ -20,6 +20,7 @@ export interface DiscoveredEvent {
     tags: string[];
     coordinates?: Coordinates;
     distanceKm?: number;
+    reportedAttendance?: number;
 }
 
 export interface DiscoveryFilters {
@@ -29,7 +30,7 @@ export interface DiscoveryFilters {
     radiusKm: number;
     days: number;
     mode: 'all' | 'in-person' | 'online';
-    sort: 'date' | 'distance';
+    sort: 'date' | 'distance' | 'popularity';
     page: number;
     pageSize: number;
 }

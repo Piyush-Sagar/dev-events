@@ -5,7 +5,7 @@ import { parseDiscoveryFilters, filterDiscoveredEvents } from '@/lib/discovery/q
 import { createEventCalendar } from '@/lib/discovery/calendar';
 import { fetchProviderJson } from '@/lib/discovery/provider';
 import { DiscoveryError, type DiscoveredEvent } from '@/lib/discovery/types';
-import { locationFailureMessage, locationQueryCoordinates, shareableDiscoveryParams } from '@/lib/discovery/location';
+import { locationFailureMessage, locationQueryCoordinates, shareableDiscoveryParams, shouldDetectLocation, nearbyLocationParams } from '@/lib/discovery/location';
 
 const now = new Date('2026-10-08T12:00:00Z');
 const cities = normalizeCities({
@@ -29,6 +29,50 @@ const rows = [
     source('Unmapped event', 'Unknown (India)', '2026-10-11'),
 ];
 const events = normalizeEvents(rows, cities);
+
+test('automatic location respects manual/worldwide/online links and success builds a private nearby query', () => {
+    assert.equal(shouldDetectLocation(new URLSearchParams()), true);
+    assert.equal(shouldDetectLocation(new URLSearchParams('location=auto')), true);
+    for (const query of ['city=London', 'location=city', 'location=worldwide', 'mode=online']) {
+        assert.equal(shouldDetectLocation(new URLSearchParams(query)), false);
+    }
+    const input = new URLSearchParams('city=Delhi&page=3&q=React&radius=50&mode=online');
+    const nearby = nearbyLocationParams(input, { latitude: 12.988, longitude: 77.622 });
+    assert.equal(nearby.get('mode'), 'in-person');
+    assert.equal(nearby.get('sort'), 'distance');
+    assert.equal(nearby.get('lat'), '12.99');
+    assert.equal(nearby.get('radius'), '50');
+    assert.equal(nearby.has('city'), false);
+    assert.equal(nearby.has('page'), false);
+    assert.equal(input.get('city'), 'Delhi');
+    assert.equal(shareableDiscoveryParams(nearby).has('lat'), false);
+    assert.equal(nearbyLocationParams(new URLSearchParams('sort=popularity'), { latitude: 0, longitude: 0 }).get('sort'), 'popularity');
+});
+
+test('attendance normalization keeps positive provider counts and preserves them across duplicate records', () => {
+    const row = rows[1];
+    for (const attendees of [0, -1, NaN, Infinity, '100', 1.5, Number.MAX_SAFE_INTEGER + 1]) {
+        assert.equal(normalizeEvents([{ ...row, attendees }], cities)[0].reportedAttendance, undefined);
+    }
+    assert.equal(normalizeEvents([{ ...row, attendees: 500 }, row], cities)[0].reportedAttendance, 500);
+});
+
+test('distance sorts exact proximity then reported popularity; popularity sorts known counts before unknowns and paginates', () => {
+    const ranked: DiscoveredEvent[] = [
+        { ...events[1], id: 'unknown', title: 'Unknown', coordinates: { latitude: 0, longitude: 0 } },
+        { ...events[1], id: 'small', title: 'Small', reportedAttendance: 100, coordinates: { latitude: 0, longitude: 0 } },
+        { ...events[1], id: 'large', title: 'Large', reportedAttendance: 1000, coordinates: { latitude: 0, longitude: 0.01 } },
+    ];
+    const filters = parseDiscoveryFilters(new URLSearchParams('lat=0&lng=0'));
+    assert.equal(filters.sort, 'distance');
+    assert.deepEqual(filterDiscoveredEvents(ranked, cities, filters, now).events.map((event) => event.id), ['small', 'unknown', 'large']);
+    assert.deepEqual(filterDiscoveredEvents(ranked, cities, { ...filters, sort: 'popularity' }, now).events.map((event) => event.id), ['large', 'small', 'unknown']);
+    const page = filterDiscoveredEvents(ranked, cities, { ...filters, sort: 'popularity', page: 2, pageSize: 1 }, now);
+    assert.equal(page.events[0].id, 'small');
+    assert.equal(page.total, 3);
+    const close = [{ ...ranked[0], id: 'near', coordinates: { latitude: 0, longitude: 0.0001 } }, { ...ranked[1], id: 'far', coordinates: { latitude: 0, longitude: 0.0002 }, reportedAttendance: 9999 }];
+    assert.deepEqual(filterDiscoveredEvents(close, cities, filters, now).events.map((event) => event.id), ['near', 'far']);
+});
 
 test('normalization rejects unsafe URLs, malformed dates, and cancelled records, and deduplicates valid records', () => {
     const valid = rows[1];

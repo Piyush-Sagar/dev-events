@@ -16,6 +16,7 @@ export default function DiscoveryCard({ event }: { event: DiscoveredEvent }) {
             <p className="mb-3 flex items-start gap-2 text-sm text-light-200"><CalendarDays size={16} className="mt-0.5 shrink-0" />{formatEventDates(event.startDate, event.endDate)}</p>
             <p className="mb-2 flex items-start gap-2 text-sm text-light-200"><MapPin size={16} className="mt-0.5 shrink-0" />{event.location}</p>
             {event.distanceKm !== undefined && <p className="mb-3 pl-6 text-xs text-primary">About {event.distanceKm < 1 ? '<1' : Math.round(event.distanceKm)} km to host city</p>}
+            {event.reportedAttendance !== undefined && <p className="mb-3 pl-6 text-xs text-light-200">{event.reportedAttendance.toLocaleString('en-US')} attendees reported by provider</p>}
             <div className="mb-6 mt-3 flex flex-wrap gap-2">
                 {event.tags.slice(0, 3).map((tag) => <span key={tag} className="rounded-md border border-dark-200 px-2 py-1 text-xs text-light-200">{tag}</span>)}
             </div>

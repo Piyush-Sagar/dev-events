@@ -8,7 +8,7 @@ type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 async function DiscoveryContent({ searchParams }: { searchParams: SearchParams }) {
     const values = await searchParams;
     const params = new URLSearchParams();
-    for (const key of ['city', 'q', 'radius', 'days', 'mode', 'sort', 'page']) {
+    for (const key of ['city', 'q', 'radius', 'days', 'mode', 'sort', 'page', 'location']) {
         const value = values[key];
         if (typeof value === 'string') params.set(key, value);
     }

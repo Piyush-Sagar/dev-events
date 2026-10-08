@@ -71,6 +71,8 @@ export function normalizeEvents(payload: unknown, cities: EventCity[]): Discover
         const event: DiscoveredEvent = {
             id, title, url, location, city, country: typeof row.country === 'string' ? row.country : '',
             startDate, endDate, online, tags: [...new Set(tags)],
+            ...(typeof row.attendees === 'number' && Number.isSafeInteger(row.attendees) && row.attendees > 0
+                ? { reportedAttendance: row.attendees } : {}),
             ...(coordinates ? { coordinates: { latitude: coordinates.latitude, longitude: coordinates.longitude } } : {}),
         };
         const existing = events.get(id);
@@ -79,6 +81,7 @@ export function normalizeEvents(payload: unknown, cities: EventCity[]): Discover
             ...(event.title.length > existing.title.length ? event : existing),
             endDate: existing.endDate > event.endDate ? existing.endDate : event.endDate,
             tags: [...new Set([...existing.tags, ...event.tags])],
+            reportedAttendance: existing.reportedAttendance ?? event.reportedAttendance,
         });
     }
     return [...events.values()];

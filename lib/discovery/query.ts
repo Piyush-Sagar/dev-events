@@ -21,9 +21,9 @@ export function parseDiscoveryFilters(params: URLSearchParams): DiscoveryFilters
     const query = params.get('q')?.trim() || '';
     if (query.length > 100) throw new DiscoveryError('Search query is too long.');
     const mode = params.get('mode') || 'all';
-    const sort = params.get('sort') || 'date';
+    const sort = params.get('sort') || 'distance';
     if (!['all', 'in-person', 'online'].includes(mode)) throw new DiscoveryError('Invalid event mode.');
-    if (!['date', 'distance'].includes(sort)) throw new DiscoveryError('Invalid sort order.');
+    if (!['date', 'distance', 'popularity'].includes(sort)) throw new DiscoveryError('Invalid sort order.');
     return {
         ...(hasLatitude ? { location: {
             latitude: numberParam(params, 'lat', 0, -90, 90),
@@ -64,10 +64,14 @@ export function filterDiscoveredEvents(events: DiscoveredEvent[], cities: EventC
     });
 
     matches.sort((a, b) => {
-        if (filters.sort === 'distance' && location && filters.mode !== 'online') {
-            const proximity = (a.distanceKm ?? Infinity) - (b.distanceKm ?? Infinity);
+        const popularity = (b.reportedAttendance ?? -1) - (a.reportedAttendance ?? -1);
+        if (filters.sort === 'popularity' && popularity !== 0) return popularity;
+        if (filters.sort !== 'date' && location && filters.mode !== 'online') {
+            // Compare exact city distances; display rounding must not create false ties.
+            const proximity = distanceKm(location, a.coordinates!) - distanceKm(location, b.coordinates!);
             if (proximity !== 0) return proximity;
         }
+        if (filters.sort === 'distance' && location && filters.mode !== 'online' && popularity !== 0) return popularity;
         return a.startDate.localeCompare(b.startDate) || a.title.localeCompare(b.title);
     });
     const offset = (filters.page - 1) * filters.pageSize;

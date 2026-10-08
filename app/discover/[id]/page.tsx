@@ -25,6 +25,7 @@ async function DiscoveredEventDetails({ params }: { params: Promise<{ id: string
                 <div className="mt-8 flex flex-col gap-4 text-light-100">
                     <p className="flex items-center gap-3"><CalendarDays size={20} />{formatEventDates(event.startDate, event.endDate)}</p>
                     <p className="flex items-center gap-3"><MapPin size={20} />{event.location}</p>
+                    {event.reportedAttendance !== undefined && <p className="text-sm text-light-200">{event.reportedAttendance.toLocaleString('en-US')} attendees reported by the provider; not independently verified.</p>}
                 </div>
                 <div className="mt-6 flex flex-wrap gap-2">{event.tags.map((tag) => <span key={tag} className="pill">{tag}</span>)}</div>
                 <div className="mt-10 rounded-xl border border-dark-200 p-6">

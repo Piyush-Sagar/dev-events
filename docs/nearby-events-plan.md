@@ -4,7 +4,7 @@ Branch: `codex/nearby-real-events`
 
 ## Outcome
 
-Replace the sample-event homepage with real upcoming developer events. A visitor can choose a city or explicitly use browser location, search by topic, set a radius and date window, view event details, and continue to the organizer's registration page. Discovery must work independently of the currently broken MongoDB connection.
+Replace the sample-event homepage with real upcoming developer events. A visitor can automatically use browser location with permission or choose a city, search by topic, set a radius and date window, view event details, and continue to the organizer's registration page. Discovery must work independently of the currently broken MongoDB connection.
 
 ## API decision
 
@@ -25,7 +25,7 @@ The source content is [CC BY-NC 4.0](https://github.com/scraly/developers-confer
 1. **Normalize real data:** Validate upstream payloads, ignore malformed/cancelled/past events, deduplicate repeated records, retain organizer URLs, tags, country, and date range. Do not invent a time, venue, ticket price, or description when the feed omits it.
 2. **Fetch efficiently:** Cache the normalized upcoming catalog and city data for one hour, impose fetch timeouts, and return a clear service error if the source is unavailable. The full historical feed exceeds Next's 2 MB fetch-cache limit, so do not put that raw response in the fetch cache. Never substitute fake events on provider failure.
 3. **Find nearby events:** Add an internal read-only discovery API supporting validated coordinates/city, radius, query, days, mode, sort, and bounded pagination. Calculate great-circle distance to host-city coordinates. Unknown coordinates are excluded from radius searches. Label distances as approximate distances to the host city, not the venue.
-4. **Location UX:** Start with real worldwide upcoming events, with no assumed city. Offer city search and an explicit "Use my location" button. Permission denial, timeouts, unsupported browsers, and empty coverage all retain the manual-city path. GPS coordinates remain in component memory, are rounded before requests, are not persisted, and are not sent to the upstream event provider. Preserve selected city and filters in the URL; do not put GPS coordinates in shareable URLs.
+4. **Location UX:** Automatically request browser location on arrival unless the URL selects a manual city, worldwide discovery, or online-only events. Offer city search, "Choose another location", and a "Use my location" retry button. Permission denial, timeouts, unsupported browsers, and empty coverage all retain the manual-city path. GPS coordinates remain in component memory, are rounded before requests, are not persisted, and are not sent to the upstream event provider. Preserve selected city and filters in the URL; do not put GPS coordinates in shareable URLs.
 5. **Useful browsing:** Show query, radius, time-window, online/in-person, and date/distance filters; display loading, retry, empty, and pagination states. Separate online events from proximity results. Preserve active filters while paging. Show coverage limitations rather than implying every local meetup is included.
 6. **Real detail/registration:** Add dedicated imported-event pages with authentic title, location, date range, topic labels, source attribution, organizer link, and an add-to-calendar download. Imported events have no local edit/delete/booking controls; registration remains with the actual organizer.
 7. **Remove automatic placeholders:** Stop returning seeded fixtures when MongoDB is absent or unavailable. Keep fixtures only for explicit seeding/testing. Existing user-created event routes remain available as a separate community-events area when the database works.
@@ -37,7 +37,7 @@ The source content is [CC BY-NC 4.0](https://github.com/scraly/developers-confer
 - A Bengaluru city search returns only ongoing/upcoming events within the selected radius; a sparse city truthfully returns no matches.
 - Radius is enforced using unrounded distances; missing coordinates never appear as nearby.
 - Online-only discovery works without location and is never described as nearby.
-- Manual city selection works without browser permission; location permission is requested only after pressing the location button.
+- Manual city selection works without browser permission; browser permission gates automatic location; manual/worldwide/online links bypass detection.
 - Provider failures are distinguishable from an empty search and can be retried.
 - Organizer links open the real event website; calendar entries reflect supplied dates without inventing a start time.
 - External event discovery requires neither MongoDB nor Cloudinary credentials.
@@ -55,3 +55,9 @@ The first release is implemented on this branch. Live production-build checks re
 Lint, TypeScript, all **21 regression tests**, and the production build passed. HTTP checks covered genuine upstream data, matching SSR/card/detail IDs, each nearby detail route, deduplication of city/domain aliases, online separation, empty coverage, pagination, invalid coordinates, calendar downloads, and the absence of automatic MongoDB sample fallbacks.
 
 Local review URL: `http://localhost:3001/`. The currently deployed Vercel production site remains on its earlier version.
+
+## Automatic location and popularity update
+
+On arrival the browser requests location permission and, on success, fetches in-person events using rounded coordinates. Manual cities and worldwide/online links override detection. Denial and timeout retain city search. Default sorting compares exact host-city distance, provider-reported attendance for distance ties, then date. A separate popularity sort orders known attendance counts descending, missing counts last, with distance/date tie-breakers. Counts come from the live feed and are not independently verified: the provider uses AI-assisted metadata generation. They are a popularity proxy, not live bookings or verified ticket sales. No attendance figures are invented. Sparse coverage is explained on the page.
+
+Update verification: all 24 tests, lint, TypeScript, and the production build passed. The browser automatically attempted location, returned unavailable on this computer, and retained working manual London search and popularity sorting. Live API checks confirmed nine Bengaluru nearby results, descending reported attendance, and online separation. Actual successful GPS access could not be verified on this computer.
